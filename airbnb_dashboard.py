@@ -5,7 +5,7 @@ import altair as alt
 # ── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(page_title="Austin Airbnb Explorer", layout="wide")
 st.title("Austin Airbnb Listings Explorer")
-st.markdown("Explore Inside Airbnb data for Austin, TX. Use the filters in the sidebar to narrow the dataset — all charts update together.")
+st.markdown("Explore Inside Airbnb data for Austin, TX. Use the filters in the sidebar to narrow the dataset.")
 
 # ── Load data ─────────────────────────────────────────────────────────────────
 @st.cache_data
@@ -20,7 +20,7 @@ def load_data():
 df = load_data()
 
 # ── Sidebar filters ───────────────────────────────────────────────────────────
-st.sidebar.header("🔍 Filters")
+st.sidebar.header("Filters")
 
 room_types = ["All"] + sorted(df["room_type"].unique().tolist())
 selected_room = st.sidebar.selectbox("Room Type", room_types)
@@ -65,7 +65,7 @@ histogram = (
         ],
     )
     .add_params(brush)
-    .properties(width=860, height=200, title="📊 Price Distribution — drag to filter charts below")
+    .properties(width=860, height=200, title="Price Distribution — drag to filter charts below")
 )
 
 # ── Chart 2: Scatter ──────────────────────────────────────────────────────────
@@ -85,7 +85,7 @@ scatter = (
         ],
     )
     .transform_filter(brush)
-    .properties(width=420, height=320, title="⭐ Price vs. Number of Reviews")
+    .properties(width=420, height=320, title="Price vs. Number of Reviews")
 )
 
 # ── Chart 3: Location scatter ─────────────────────────────────────────────────
@@ -105,7 +105,7 @@ location = (
         ],
     )
     .transform_filter(brush)
-    .properties(width=420, height=320, title="🗺️ Listing Locations")
+    .properties(width=420, height=320, title="Listing Locations")
 )
 
 # ── Combine into ONE spec (required for brush to work across charts) ───────────
@@ -120,7 +120,7 @@ st.caption(f"Showing a sample of {len(sample):,} listings. Drag on the histogram
 st.altair_chart(linked, use_container_width=False)
 
 # ── Chart 4: Avg Price by ZIP ─────────────────────────────────────────────────
-st.subheader(f"🏘️ Average Price by ZIP Code (Top {top_n_zips})")
+st.subheader(f"Average Price by ZIP Code (Top {top_n_zips})")
 
 zip_agg = (
     filtered.groupby("neighbourhood")["price"]
@@ -149,7 +149,7 @@ zip_bar = (
 st.altair_chart(zip_bar, use_container_width=True)
 
 # ── Chart 5: Room type breakdown ──────────────────────────────────────────────
-st.subheader("🛏️ Listings by Room Type")
+st.subheader("Listings by Room Type")
 
 room_counts = filtered["room_type"].value_counts().reset_index()
 room_counts.columns = ["room_type", "count"]
