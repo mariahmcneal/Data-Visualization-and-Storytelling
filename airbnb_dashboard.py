@@ -11,9 +11,9 @@ st.markdown("Explore Inside Airbnb data for Austin, TX. Use the filters in the s
 @st.cache_data
 def load_data():
     df = pd.read_csv("listings (1).csv")
-    df = df[df["price"] <= 1000]          # remove extreme outliers
+    df = df[df["price"] <= 1000]
     df = df[df["price"] > 0]
-    df["neighbourhood"] = df["neighbourhood"].astype(str)  # ZIP as string
+    df["neighbourhood"] = df["neighbourhood"].astype(str)
     df["availability_pct"] = (df["availability_365"] / 365 * 100).round(1)
     return df
 
@@ -45,15 +45,16 @@ filtered = filtered[
 st.sidebar.markdown(f"**{len(filtered):,} listings** match your filters")
 
 # ── Shared brush for coordination ─────────────────────────────────────────────
-brush = alt.selection_interval(encodings=["x"])
+# empty=True means ALL points show before any brush is drawn
+brush = alt.selection_interval(encodings=["x"], empty=True)
 
 # ── Chart 1: Price Distribution (histogram) ───────────────────────────────────
 st.subheader("Price Distribution")
-st.caption("Drag to select a price range — the map and scatter plot below will update to show only listings in that range.")
+st.caption("Drag to select a price range — the scatter plot and map below will update.")
 
 price_hist = (
     alt.Chart(filtered)
-    .mark_bar(opacity=0.8, color="#E87B3E")
+    .mark_bar(opacity=0.8)
     .encode(
         x=alt.X("price:Q", bin=alt.Bin(maxbins=40), title="Price per Night ($)"),
         y=alt.Y("count():Q", title="Number of Listings"),
@@ -68,47 +69,17 @@ price_hist = (
 )
 st.altair_chart(price_hist, use_container_width=True)
 
-# ── Rows 2: Map + Scatter ──────────────────────────────────────────────────────
+# ── Row 2: Scatter + Map (lat/lon scatter, no projection) ─────────────────────
 col1, col2 = st.columns(2)
 
-# Chart 2: Geographic scatter map
+# Chart 2: Price vs Reviews scatter — brushed
 with col1:
-    st.subheader("Listing Locations")
-    st.caption("Color = room type · Size = price")
-
-    map_data = filtered.copy()
-    # Apply brush filter manually by price for the map
-    map_chart = (
-        alt.Chart(map_data)
-        .mark_circle(opacity=0.5)
-        .encode(
-            longitude="longitude:Q",
-            latitude="latitude:Q",
-            color=alt.Color("room_type:N", title="Room Type",
-                            scale=alt.Scale(scheme="tableau10")),
-            size=alt.Size("price:Q", scale=alt.Scale(range=[10, 200]), legend=None),
-            tooltip=[
-                alt.Tooltip("name:N", title="Listing"),
-                alt.Tooltip("room_type:N", title="Room Type"),
-                alt.Tooltip("price:Q", title="Price ($)"),
-                alt.Tooltip("neighbourhood:N", title="ZIP Code"),
-                alt.Tooltip("number_of_reviews:Q", title="# Reviews"),
-            ],
-        )
-        .transform_filter(brush)
-        .project(type="mercator")
-        .properties(height=350)
-    )
-    st.altair_chart(map_chart, use_container_width=True)
-
-# Chart 3: Price vs Reviews scatter
-with col2:
     st.subheader("Price vs. Number of Reviews")
-    st.caption("Do cheaper listings attract more reviews?")
+    st.caption("Brush the histogram above to filter. Do cheaper listings attract more reviews?")
 
     scatter = (
         alt.Chart(filtered)
-        .mark_circle(opacity=0.4)
+        .mark_circle(opacity=0.4, size=30)
         .encode(
             x=alt.X("price:Q", title="Price per Night ($)"),
             y=alt.Y("number_of_reviews:Q", title="Number of Reviews"),
@@ -126,7 +97,38 @@ with col2:
     )
     st.altair_chart(scatter, use_container_width=True)
 
-# ── Chart 4: Avg Price by ZIP Code (bar chart) ────────────────────────────────
+# Chart 3: Lat/lon scatter as map (no .project() — avoids rendering issues)
+with col2:
+    st.subheader("Listing Locations")
+    st.caption("Brush the histogram to highlight listings in that price range. Color = room type.")
+
+    map_chart = (
+        alt.Chart(filtered)
+        .mark_circle(opacity=0.45, size=15)
+        .encode(
+            x=alt.X("longitude:Q", title="Longitude",
+                    scale=alt.Scale(zero=False)),
+            y=alt.Y("latitude:Q", title="Latitude",
+                    scale=alt.Scale(zero=False)),
+            color=alt.condition(
+                brush,
+                alt.Color("room_type:N", title="Room Type",
+                          scale=alt.Scale(scheme="tableau10")),
+                alt.value("#dddddd")
+            ),
+            tooltip=[
+                alt.Tooltip("name:N", title="Listing"),
+                alt.Tooltip("room_type:N", title="Room Type"),
+                alt.Tooltip("price:Q", title="Price ($)"),
+                alt.Tooltip("neighbourhood:N", title="ZIP Code"),
+            ],
+        )
+        .transform_filter(brush)
+        .properties(height=350)
+    )
+    st.altair_chart(map_chart, use_container_width=True)
+
+# ── Chart 4: Avg Price by ZIP Code ────────────────────────────────────────────
 st.subheader(f"Average Price by ZIP Code (Top {top_n_zips})")
 st.caption("Ranked by average nightly price within your filtered selection.")
 
