@@ -44,12 +44,16 @@ filtered = filtered[
 
 st.sidebar.markdown(f"**{len(filtered):,} listings** match your filters")
 
-# ── Brush (shared across all 3 linked charts in one spec) ────────────────────
+# ── Sample for linked charts to keep browser fast ────────────────────────────
+MAX_POINTS = 2000
+sample = filtered.sample(min(MAX_POINTS, len(filtered)), random_state=42).reset_index(drop=True)
+
+# ── Brush ─────────────────────────────────────────────────────────────────────
 brush = alt.selection_interval(encodings=["x"], empty=True)
 
-# ── Chart 1: Price histogram (defines the brush) ─────────────────────────────
+# ── Chart 1: Histogram ────────────────────────────────────────────────────────
 histogram = (
-    alt.Chart(filtered)
+    alt.Chart(sample)
     .mark_bar(opacity=0.8)
     .encode(
         x=alt.X("price:Q", bin=alt.Bin(maxbins=40), title="Price per Night ($)"),
@@ -61,12 +65,12 @@ histogram = (
         ],
     )
     .add_params(brush)
-    .properties(width="container", height=220, title="📊 Price Distribution — drag to filter")
+    .properties(width=860, height=200, title="📊 Price Distribution — drag to filter charts below")
 )
 
-# ── Chart 2: Price vs Reviews scatter (filtered by brush) ────────────────────
+# ── Chart 2: Scatter ──────────────────────────────────────────────────────────
 scatter = (
-    alt.Chart(filtered)
+    alt.Chart(sample)
     .mark_circle(opacity=0.4, size=25)
     .encode(
         x=alt.X("price:Q", title="Price per Night ($)"),
@@ -81,13 +85,13 @@ scatter = (
         ],
     )
     .transform_filter(brush)
-    .properties(width="container", height=300, title="⭐ Price vs. Number of Reviews")
+    .properties(width=420, height=320, title="⭐ Price vs. Number of Reviews")
 )
 
-# ── Chart 3: Lat/lon location scatter (filtered by brush) ────────────────────
+# ── Chart 3: Location scatter ─────────────────────────────────────────────────
 location = (
-    alt.Chart(filtered)
-    .mark_circle(opacity=0.45, size=12)
+    alt.Chart(sample)
+    .mark_circle(opacity=0.5, size=14)
     .encode(
         x=alt.X("longitude:Q", title="Longitude", scale=alt.Scale(zero=False)),
         y=alt.Y("latitude:Q", title="Latitude", scale=alt.Scale(zero=False)),
@@ -101,23 +105,22 @@ location = (
         ],
     )
     .transform_filter(brush)
-    .properties(width="container", height=300, title="🗺️ Listing Locations")
+    .properties(width=420, height=320, title="🗺️ Listing Locations")
 )
 
-# ── Combine all 3 into ONE spec so brush works across them ───────────────────
-st.subheader("Interactive Overview")
-st.caption("Drag on the histogram to filter the scatter plot and map below.")
-
+# ── Combine into ONE spec (required for brush to work across charts) ───────────
 linked = alt.vconcat(
     histogram,
     alt.hconcat(scatter, location).resolve_scale(color="shared"),
-).resolve_scale(color="shared")
+    spacing=20
+).resolve_scale(color="shared").configure_view(stroke=None)
 
-st.altair_chart(linked, use_container_width=True)
+st.subheader("Interactive Overview")
+st.caption(f"Showing a sample of {len(sample):,} listings. Drag on the histogram to filter the charts below.")
+st.altair_chart(linked, use_container_width=False)
 
-# ── Chart 4: Avg Price by ZIP Code (standalone, uses pandas-filtered data) ────
+# ── Chart 4: Avg Price by ZIP ─────────────────────────────────────────────────
 st.subheader(f"🏘️ Average Price by ZIP Code (Top {top_n_zips})")
-st.caption("Ranked by average nightly price within your filtered selection.")
 
 zip_agg = (
     filtered.groupby("neighbourhood")["price"]
@@ -164,6 +167,5 @@ room_bar = (
 )
 st.altair_chart(room_bar, use_container_width=True)
 
-# ── Footer ────────────────────────────────────────────────────────────────────
 st.markdown("---")
 st.caption("Data source: [Inside Airbnb](https://insideairbnb.com/get-the-data/) · Austin, TX")
