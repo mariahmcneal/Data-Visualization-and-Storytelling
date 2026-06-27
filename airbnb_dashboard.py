@@ -40,19 +40,15 @@ filtered = filtered[
     (filtered["price"] >= price_range[0]) &
     (filtered["price"] <= price_range[1]) &
     (filtered["number_of_reviews"] >= min_reviews)
-]
+].reset_index(drop=True)
 
 st.sidebar.markdown(f"**{len(filtered):,} listings** match your filters")
 
-# ── Shared brush for coordination ─────────────────────────────────────────────
-# empty=True means ALL points show before any brush is drawn
+# ── Brush (shared across all 3 linked charts in one spec) ────────────────────
 brush = alt.selection_interval(encodings=["x"], empty=True)
 
-# ── Chart 1: Price Distribution (histogram) ───────────────────────────────────
-st.subheader("📊 Price Distribution")
-st.caption("Drag to select a price range — the scatter plot and map below will update.")
-
-price_hist = (
+# ── Chart 1: Price histogram (defines the brush) ─────────────────────────────
+histogram = (
     alt.Chart(filtered)
     .mark_bar(opacity=0.8)
     .encode(
@@ -60,75 +56,66 @@ price_hist = (
         y=alt.Y("count():Q", title="Number of Listings"),
         color=alt.condition(brush, alt.value("#E87B3E"), alt.value("#cccccc")),
         tooltip=[
-            alt.Tooltip("price:Q", bin=alt.Bin(maxbins=40), title="Price Range"),
+            alt.Tooltip("price:Q", bin=alt.Bin(maxbins=40), title="Price Range ($)"),
             alt.Tooltip("count():Q", title="Listings"),
         ],
     )
     .add_params(brush)
-    .properties(height=250)
+    .properties(width="container", height=220, title="📊 Price Distribution — drag to filter")
 )
-st.altair_chart(price_hist, use_container_width=True)
 
-# ── Row 2: Scatter + Map (lat/lon scatter, no projection) ─────────────────────
-col1, col2 = st.columns(2)
-
-# Chart 2: Price vs Reviews scatter — brushed
-with col1:
-    st.subheader("⭐ Price vs. Number of Reviews")
-    st.caption("Brush the histogram above to filter. Do cheaper listings attract more reviews?")
-
-    scatter = (
-        alt.Chart(filtered)
-        .mark_circle(opacity=0.4, size=30)
-        .encode(
-            x=alt.X("price:Q", title="Price per Night ($)"),
-            y=alt.Y("number_of_reviews:Q", title="Number of Reviews"),
-            color=alt.Color("room_type:N", title="Room Type",
-                            scale=alt.Scale(scheme="tableau10")),
-            tooltip=[
-                alt.Tooltip("name:N", title="Listing"),
-                alt.Tooltip("price:Q", title="Price ($)"),
-                alt.Tooltip("number_of_reviews:Q", title="# Reviews"),
-                alt.Tooltip("room_type:N", title="Room Type"),
-            ],
-        )
-        .transform_filter(brush)
-        .properties(height=350)
+# ── Chart 2: Price vs Reviews scatter (filtered by brush) ────────────────────
+scatter = (
+    alt.Chart(filtered)
+    .mark_circle(opacity=0.4, size=25)
+    .encode(
+        x=alt.X("price:Q", title="Price per Night ($)"),
+        y=alt.Y("number_of_reviews:Q", title="Number of Reviews"),
+        color=alt.Color("room_type:N", title="Room Type",
+                        scale=alt.Scale(scheme="tableau10")),
+        tooltip=[
+            alt.Tooltip("name:N", title="Listing"),
+            alt.Tooltip("price:Q", title="Price ($)"),
+            alt.Tooltip("number_of_reviews:Q", title="# Reviews"),
+            alt.Tooltip("room_type:N", title="Room Type"),
+        ],
     )
-    st.altair_chart(scatter, use_container_width=True)
+    .transform_filter(brush)
+    .properties(width="container", height=300, title="⭐ Price vs. Number of Reviews")
+)
 
-# Chart 3: Lat/lon scatter as map (no .project() — avoids rendering issues)
-with col2:
-    st.subheader("🗺️ Listing Locations")
-    st.caption("Brush the histogram to highlight listings in that price range. Color = room type.")
-
-    map_chart = (
-        alt.Chart(filtered)
-        .mark_circle(opacity=0.45, size=15)
-        .encode(
-            x=alt.X("longitude:Q", title="Longitude",
-                    scale=alt.Scale(zero=False)),
-            y=alt.Y("latitude:Q", title="Latitude",
-                    scale=alt.Scale(zero=False)),
-            color=alt.condition(
-                brush,
-                alt.Color("room_type:N", title="Room Type",
-                          scale=alt.Scale(scheme="tableau10")),
-                alt.value("#dddddd")
-            ),
-            tooltip=[
-                alt.Tooltip("name:N", title="Listing"),
-                alt.Tooltip("room_type:N", title="Room Type"),
-                alt.Tooltip("price:Q", title="Price ($)"),
-                alt.Tooltip("neighbourhood:N", title="ZIP Code"),
-            ],
-        )
-        .transform_filter(brush)
-        .properties(height=350)
+# ── Chart 3: Lat/lon location scatter (filtered by brush) ────────────────────
+location = (
+    alt.Chart(filtered)
+    .mark_circle(opacity=0.45, size=12)
+    .encode(
+        x=alt.X("longitude:Q", title="Longitude", scale=alt.Scale(zero=False)),
+        y=alt.Y("latitude:Q", title="Latitude", scale=alt.Scale(zero=False)),
+        color=alt.Color("room_type:N", title="Room Type",
+                        scale=alt.Scale(scheme="tableau10")),
+        tooltip=[
+            alt.Tooltip("name:N", title="Listing"),
+            alt.Tooltip("room_type:N", title="Room Type"),
+            alt.Tooltip("price:Q", title="Price ($)"),
+            alt.Tooltip("neighbourhood:N", title="ZIP Code"),
+        ],
     )
-    st.altair_chart(map_chart, use_container_width=True)
+    .transform_filter(brush)
+    .properties(width="container", height=300, title="🗺️ Listing Locations")
+)
 
-# ── Chart 4: Avg Price by ZIP Code ────────────────────────────────────────────
+# ── Combine all 3 into ONE spec so brush works across them ───────────────────
+st.subheader("Interactive Overview")
+st.caption("Drag on the histogram to filter the scatter plot and map below.")
+
+linked = alt.vconcat(
+    histogram,
+    alt.hconcat(scatter, location).resolve_scale(color="shared"),
+).resolve_scale(color="shared")
+
+st.altair_chart(linked, use_container_width=True)
+
+# ── Chart 4: Avg Price by ZIP Code (standalone, uses pandas-filtered data) ────
 st.subheader(f"🏘️ Average Price by ZIP Code (Top {top_n_zips})")
 st.caption("Ranked by average nightly price within your filtered selection.")
 
@@ -180,4 +167,3 @@ st.altair_chart(room_bar, use_container_width=True)
 # ── Footer ────────────────────────────────────────────────────────────────────
 st.markdown("---")
 st.caption("Data source: [Inside Airbnb](https://insideairbnb.com/get-the-data/) · Austin, TX")
-
