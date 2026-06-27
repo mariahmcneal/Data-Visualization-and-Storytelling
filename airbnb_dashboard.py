@@ -20,7 +20,7 @@ def load_data():
 df = load_data()
 
 # ── Sidebar filters ───────────────────────────────────────────────────────────
-st.sidebar.header("Filters")
+st.sidebar.header("🔍 Filters")
 
 room_types = ["All"] + sorted(df["room_type"].unique().tolist())
 selected_room = st.sidebar.selectbox("Room Type", room_types)
@@ -49,7 +49,7 @@ st.sidebar.markdown(f"**{len(filtered):,} listings** match your filters")
 brush = alt.selection_interval(encodings=["x"], empty=True)
 
 # ── Chart 1: Price Distribution (histogram) ───────────────────────────────────
-st.subheader("Price Distribution")
+st.subheader("📊 Price Distribution")
 st.caption("Drag to select a price range — the scatter plot and map below will update.")
 
 price_hist = (
@@ -74,7 +74,7 @@ col1, col2 = st.columns(2)
 
 # Chart 2: Price vs Reviews scatter — brushed
 with col1:
-    st.subheader("Price vs. Number of Reviews")
+    st.subheader("⭐ Price vs. Number of Reviews")
     st.caption("Brush the histogram above to filter. Do cheaper listings attract more reviews?")
 
     scatter = (
@@ -99,7 +99,7 @@ with col1:
 
 # Chart 3: Lat/lon scatter as map (no .project() — avoids rendering issues)
 with col2:
-    st.subheader("Listing Locations")
+    st.subheader("🗺️ Listing Locations")
     st.caption("Brush the histogram to highlight listings in that price range. Color = room type.")
 
     map_chart = (
@@ -129,7 +129,7 @@ with col2:
     st.altair_chart(map_chart, use_container_width=True)
 
 # ── Chart 4: Avg Price by ZIP Code ────────────────────────────────────────────
-st.subheader(f"Average Price by ZIP Code (Top {top_n_zips})")
+st.subheader(f"🏘️ Average Price by ZIP Code (Top {top_n_zips})")
 st.caption("Ranked by average nightly price within your filtered selection.")
 
 zip_agg = (
@@ -159,7 +159,7 @@ zip_bar = (
 st.altair_chart(zip_bar, use_container_width=True)
 
 # ── Chart 5: Room type breakdown ──────────────────────────────────────────────
-st.subheader("Listings by Room Type")
+st.subheader("🛏️ Listings by Room Type")
 
 room_counts = filtered["room_type"].value_counts().reset_index()
 room_counts.columns = ["room_type", "count"]
@@ -180,3 +180,4 @@ st.altair_chart(room_bar, use_container_width=True)
 # ── Footer ────────────────────────────────────────────────────────────────────
 st.markdown("---")
 st.caption("Data source: [Inside Airbnb](https://insideairbnb.com/get-the-data/) · Austin, TX")
+
